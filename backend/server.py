@@ -1,12 +1,10 @@
-# === IS CODE KO SERVER.PY KE SABSE UPAR (LINE 1 PAR) PASTE KAREIN ===
+# File: backend/server.py
 import sys
 import os
 
-# Termux/Android path issue ko fix karne ke liye
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
-# ===================================================================
 
 import datetime
 from fastapi import FastAPI, Depends, HTTPException, Request
@@ -20,7 +18,6 @@ from routes.auth_route import router as auth_router
 from middleware.jwt_auth import get_current_admin
 from services.bcrypt_service import BcryptService
 
-# Auto create database schema on startup
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Mistri Adda Admin Panel")
@@ -35,11 +32,9 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api")
 
-# Database initializer (Startup Seed Data)
 @app.on_event("startup")
 def startup_db_seed():
     db = next(get_db())
-    # Create Default Admin if empty
     admin_exists = db.query(Admin).first()
     if not admin_exists:
         hashed_pwd = BcryptService.hash_password("admin123")
@@ -47,7 +42,6 @@ def startup_db_seed():
         db.add(default_admin)
         db.commit()
 
-    # Seed Mock Users if empty
     if not db.query(User).first():
         users = [
             User(name="Aman Sharma", email="aman@example.com", phone="9876543210", status="active", kyc_status="verified"),
@@ -57,7 +51,6 @@ def startup_db_seed():
         db.add_all(users)
         db.commit()
 
-    # Seed Mock Workers if empty
     if not db.query(Worker).first():
         workers = [
             Worker(name="Ramesh Kumar", email="ramesh@example.com", phone="9988776655", skill_category="Electrician", status="active", kyc_status="verified", rating=4.8, completed_jobs=24),
@@ -67,7 +60,6 @@ def startup_db_seed():
         db.add_all(workers)
         db.commit()
 
-    # Seed Mock Bookings if empty
     if not db.query(Booking).first():
         bookings = [
             Booking(user_id=1, worker_id=1, status="completed", payment_status="paid", total_amount=450.0),
@@ -78,18 +70,15 @@ def startup_db_seed():
     db.close()
 
 
-# Core Analytics Dashboard APIs
 @app.get("/api/dashboard/stats")
 def get_dashboard_stats(db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_admin)):
     u_count = db.query(User).count()
     w_count = db.query(Worker).count()
     b_count = db.query(Booking).count()
     
-    # Calculate revenue safely
     revenue_sum = db.query(Booking).filter(Booking.payment_status == "paid").all()
     total_rev = sum(b.total_amount for b in revenue_sum)
 
-    # Fetch recent active items
     recent_logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(5).all()
 
     return {
@@ -100,7 +89,6 @@ def get_dashboard_stats(db: Session = Depends(get_db), current_admin: Admin = De
         "recent_activities": [{"action": l.action, "details": l.details, "time": l.created_at.strftime("%Y-%m-%d %H:%M:%S")} for l in recent_logs]
     }
 
-# --- USER MANAGEMENT APIs ---
 @app.get("/api/users")
 def list_users(db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_admin)):
     return db.query(User).all()
@@ -123,7 +111,6 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_admin: Admi
     db.commit()
     return {"message": "User deleted successfully."}
 
-# --- WORKER MANAGEMENT APIs ---
 @app.get("/api/workers")
 def list_workers(db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_admin)):
     return db.query(Worker).all()
@@ -147,13 +134,11 @@ def change_worker_status(worker_id: int, status: str, db: Session = Depends(get_
     db.commit()
     return {"message": f"Worker status changed to {status}"}
 
-# --- AUDIT LOGS ---
 @app.get("/api/audit-logs")
 def get_audit_logs(db: Session = Depends(get_db), current_admin: Admin = Depends(get_current_admin)):
     return db.query(AuditLog).order_by(AuditLog.id.desc()).all()
 
 
-# --- INTERACTIVE DASHBOARD FRONTEND UI (Embedded Single-Page Webpage) ---
 @app.get("/", response_class=HTMLResponse)
 def serve_dashboard_ui():
     return """
@@ -178,11 +163,11 @@ def serve_dashboard_ui():
                 <div class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Username</label>
-                        <input id="login-username" type="text" placeholder="Enter username (Default: admin)" class="w-full px-4 py-2.5 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <input id="login-username" type="text" placeholder="Enter username" class="w-full px-4 py-2.5 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Password</label>
-                        <input id="login-password" type="password" placeholder="Enter password (Default: admin123)" class="w-full px-4 py-2.5 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <input id="login-password" type="password" placeholder="Enter password" class="w-full px-4 py-2.5 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                     <button onclick="performLogin()" class="w-full py-3 mt-2 bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 font-bold rounded shadow transition-all">SIGN IN TO PANEL</button>
                     <p id="login-error" class="text-red-500 text-sm text-center hidden mt-2"></p>
@@ -205,6 +190,7 @@ def serve_dashboard_ui():
                         <button onclick="switchTab('users')" class="tab-btn w-full text-left py-2.5 px-4 rounded font-medium flex items-center text-slate-400 hover:bg-slate-900 hover:text-slate-100"><i class="fa-solid fa-users w-6"></i> Manage Users</button>
                         <button onclick="switchTab('workers')" class="tab-btn w-full text-left py-2.5 px-4 rounded font-medium flex items-center text-slate-400 hover:bg-slate-900 hover:text-slate-100"><i class="fa-solid fa-user-ninja w-6"></i> Manage Workers</button>
                         <button onclick="switchTab('audit')" class="tab-btn w-full text-left py-2.5 px-4 rounded font-medium flex items-center text-slate-400 hover:bg-slate-900 hover:text-slate-100"><i class="fa-solid fa-shield-halved w-6"></i> Audit Logging</button>
+                        <button onclick="switchTab('settings')" class="tab-btn w-full text-left py-2.5 px-4 rounded font-medium flex items-center text-slate-400 hover:bg-slate-900 hover:text-slate-100"><i class="fa-solid fa-gear w-6"></i> Account Settings</button>
                     </nav>
                 </div>
                 <div class="p-4 border-t border-slate-800 flex items-center justify-between">
@@ -249,9 +235,7 @@ def serve_dashboard_ui():
                     <!-- Activity History Log -->
                     <div class="bg-slate-800/50 rounded-xl p-6 border border-slate-700">
                         <h2 class="text-lg font-bold mb-4">Recent Audit Actions</h2>
-                        <div class="space-y-3" id="recent-logs-list">
-                            <!-- Populated dynamically via endpoint -->
-                        </div>
+                        <div class="space-y-3" id="recent-logs-list"></div>
                     </div>
                 </div>
 
@@ -270,9 +254,7 @@ def serve_dashboard_ui():
                                     <th class="p-4 text-right">Perform actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="users-table-body" class="divide-y divide-slate-700 text-sm">
-                                <!-- User records dynamically placed here -->
-                            </tbody>
+                            <tbody id="users-table-body" class="divide-y divide-slate-700 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
@@ -293,9 +275,7 @@ def serve_dashboard_ui():
                                     <th class="p-4 text-right">Moderator Control</th>
                                 </tr>
                             </thead>
-                            <tbody id="workers-table-body" class="divide-y divide-slate-700 text-sm">
-                                <!-- Worker records dynamically placed here -->
-                            </tbody>
+                            <tbody id="workers-table-body" class="divide-y divide-slate-700 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
@@ -304,8 +284,32 @@ def serve_dashboard_ui():
                 <div id="tab-audit" class="hidden space-y-6">
                     <h1 class="text-2xl font-bold">System Audit Logs</h1>
                     <div class="bg-slate-800/80 rounded-xl p-6 border border-slate-700">
-                        <div class="space-y-4 max-h-[500px] overflow-y-auto pr-2" id="full-audit-logs">
-                            <!-- Populated dynamically -->
+                        <div class="space-y-4 max-h-[500px] overflow-y-auto pr-2" id="full-audit-logs"></div>
+                    </div>
+                </div>
+
+                <!-- TAB 5: ACCOUNT SETTINGS (PASSWORD CHANGE) -->
+                <div id="tab-settings" class="hidden space-y-6">
+                    <h1 class="text-2xl font-bold">Account Settings</h1>
+                    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 max-w-md shadow-lg">
+                        <h2 class="text-lg font-bold text-orange-500 mb-4 flex items-center">
+                            <i class="fa-solid fa-key mr-2"></i> Change Admin Password
+                        </h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Current Password</label>
+                                <input id="settings-old-password" type="password" placeholder="Enter current password" class="w-full px-4 py-2.5 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">New Password</label>
+                                <input id="settings-new-password" type="password" placeholder="Enter new password" class="w-full px-4 py-2.5 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Confirm New Password</label>
+                                <input id="settings-confirm-password" type="password" placeholder="Confirm new password" class="w-full px-4 py-2.5 bg-slate-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            </div>
+                            <button onclick="changePassword()" class="w-full py-2.5 bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-500 hover:to-amber-400 font-bold rounded shadow transition-all">UPDATE PASSWORD</button>
+                            <p id="settings-message" class="text-sm text-center hidden mt-2"></p>
                         </div>
                     </div>
                 </div>
@@ -313,7 +317,6 @@ def serve_dashboard_ui():
             </main>
         </div>
 
-        <!-- CONTROL LOGIC FOR FRONTEND OPERATIONS -->
         <script>
             let currentToken = localStorage.getItem("admin_token") || "";
 
@@ -370,19 +373,17 @@ def serve_dashboard_ui():
             }
 
             function switchTab(tabId) {
-                // Hide all tabs
                 document.getElementById("tab-dashboard").classList.add("hidden");
                 document.getElementById("tab-users").classList.add("hidden");
                 document.getElementById("tab-workers").classList.add("hidden");
                 document.getElementById("tab-audit").classList.add("hidden");
+                document.getElementById("tab-settings").classList.add("hidden");
 
-                // Deactivate buttons
                 document.querySelectorAll(".tab-btn").forEach(btn => {
                     btn.classList.remove("bg-slate-800", "text-orange-500");
                     btn.classList.add("text-slate-400");
                 });
 
-                // Show active tab
                 document.getElementById("tab-" + tabId).classList.remove("hidden");
                 event.currentTarget.classList.add("bg-slate-800", "text-orange-500");
 
@@ -390,9 +391,11 @@ def serve_dashboard_ui():
                 if (tabId === 'users') fetchUsers();
                 if (tabId === 'workers') fetchWorkers();
                 if (tabId === 'audit') fetchAuditLogs();
+                if (tabId === 'settings') {
+                    document.getElementById("settings-message").classList.add("hidden");
+                }
             }
 
-            // Fetch Dashboard Level Statistics
             async function fetchStats() {
                 try {
                     const res = await fetch("/api/dashboard/stats", { headers: getAuthHeaders() });
@@ -420,7 +423,6 @@ def serve_dashboard_ui():
                 } catch(e) { console.error(e); }
             }
 
-            // Fetch User Management lists
             async function fetchUsers() {
                 try {
                     const res = await fetch("/api/users", { headers: getAuthHeaders() });
@@ -465,7 +467,6 @@ def serve_dashboard_ui():
                 }
             }
 
-            // Fetch Worker Management list
             async function fetchWorkers() {
                 try {
                     const res = await fetch("/api/workers", { headers: getAuthHeaders() });
@@ -509,7 +510,6 @@ def serve_dashboard_ui():
                 fetchWorkers();
             }
 
-            // Fetch Audit logging history lists
             async function fetchAuditLogs() {
                 try {
                     const res = await fetch("/api/audit-logs", { headers: getAuthHeaders() });
@@ -529,6 +529,51 @@ def serve_dashboard_ui():
                     });
                     document.getElementById("full-audit-logs").innerHTML = html || "<p class='text-slate-500 text-center'>No system events saved yet.</p>";
                 } catch(e) { console.error(e); }
+            }
+
+            // === NEW CHANGE PASSWORD FUNCTION ===
+            async function changePassword() {
+                const oldPass = document.getElementById("settings-old-password").value;
+                const newPass = document.getElementById("settings-new-password").value;
+                const confirmPass = document.getElementById("settings-confirm-password").value;
+                const msg = document.getElementById("settings-message");
+
+                if (!oldPass || !newPass || !confirmPass) {
+                    msg.innerText = "Please fill in all fields.";
+                    msg.className = "text-red-500 text-sm text-center mt-2";
+                    msg.classList.remove("hidden");
+                    return;
+                }
+
+                if (newPass !== confirmPass) {
+                    msg.innerText = "New passwords do not match!";
+                    msg.className = "text-red-500 text-sm text-center mt-2";
+                    msg.classList.remove("hidden");
+                    return;
+                }
+
+                try {
+                    const res = await fetch("/api/auth/change-password", {
+                        method: "POST",
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ old_password: oldPass, new_password: newPass })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || "Failed to update password");
+
+                    msg.innerText = "Password updated successfully!";
+                    msg.className = "text-emerald-500 text-sm text-center mt-2";
+                    msg.classList.remove("hidden");
+
+                    // Clear fields
+                    document.getElementById("settings-old-password").value = "";
+                    document.getElementById("settings-new-password").value = "";
+                    document.getElementById("settings-confirm-password").value = "";
+                } catch (e) {
+                    msg.innerText = e.message;
+                    msg.className = "text-red-500 text-sm text-center mt-2";
+                    msg.classList.remove("hidden");
+                }
             }
         </script>
     </body>
