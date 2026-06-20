@@ -5,4 +5,4 @@ python-jose
 python-multipart
 pydantic[email]
 email-validator
-pg8000
+psycopg2-binary
